@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+   .line {
+   fill: none;
+   stroke: black;
+   stroke-width: 2.5px;
+   }
+   .overlay {
+   fill: none;
+   pointer-events: all;
+   }
+   .focus {
+   font-size: 15px;
+   }
+   .focus circle {
+   fill: none;
+   stroke: black;
+   stroke-width:1px;
+   opacity:0.5;
+   }
+   .xaxis line{
+   opacity: 0.50;
+   stroke: black;
+   stroke-width: 2.5px;
+   }
+   .xaxis path{
+   opacity: 0.50;
+   }
+   .xaxis text{
+   font-family:Verdana;
+   fill: black;
+   }
+   .yaxis line{
+   opacity: 0.50;
+   }
+   .yaxis path{
+   opacity: 0.50;
+   }
+   .yaxis text{
+   font-family:Verdana;
+   fill: black;
+   }
+   .y4 {
+   font-family:Verdana;
+   }
+   .y3 {
+   font-family:Verdana;
+   }
+</style>
+<body>
+   <link href="https://fonts.googleapis.com/css?family=Verdana:300|Overpass:300" rel="stylesheet">
+   <script src="https://d3js.org/d3.v4.min.js"></script>
+   <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+   <script src="https://d3js.org/d3-color.v1.min.js"></script>
+   <script>
+      margin = {top: 150, right: 150, bottom: 150, left: 125},
+      	width = 1500 - margin.left - margin.right,
+      	height = 750 - margin.top - margin.bottom;
+      
+      var svg = d3.select("body").append("svg")
+      .attr("width",width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+      
+      var parseTime = d3.timeParse("%Y");
+      
+      var x = d3.scaleTime().range([0, width]),
+      	y = d3.scaleLinear().range([height, 0]);
+      
+      var colorMap = {"hotel": d3.rgb("#386cb0"), "residential":d3.rgb("#f0027f"), "office":d3.rgb("#beaed4"), "other":d3.rgb("#fdc086"), "all":d3.rgb("#7fc97f")};
+      
+      var xAxis = d3.axisBottom()
+      	.scale(x);
+      
+      var yAxis = d3.axisLeft()
+      	.scale(y);
+      
+      var line = d3.line()
+      	.curve(d3.curveBasis)
+      	.x(function(d) { return x(d.year); })
+      	.y(function(d) { return y(d.count); });
+      
+      var Mapping = {};
+      
+      d3.csv("http://127.0.0.1:8080/skyscapers-count.csv", type, function(error, data) {
+        if (error) throw error;
+      
+        var purposes = data.columns.slice(1).map(function(id) {
+      	return {
+      	  id: id,
+      	  values: data.map(function(d) {
+      		return {year: d.year, count: d[id]};
+      	  })
+      	};
+        });
+      
+        x.domain([d3.min(data, function(d){return d.year; }), d3.max(data, function(d){return d.year;})]);
+      
+        y.domain([
+      	d3.min(purposes, function(c) { return d3.min(c.values, function(d) { return d.count; }); }),
+      	d3.max(purposes, function(c) { return d3.max(c.values, function(d) { return d.count; }); })
+        ]);
+      
+        var allMap = (purposes.map(function(c) { return c.id; }));
+        for (index in allMap){
+      	Mapping[allMap[index].substring(0, 3).toUpperCase()] = {"shown": true, "full": allMap[index]};
+        }
+      
+        svg.append("g")
+      	  .attr("class", "xaxis")
+      	  .attr("transform", "translate(0," + height + ")")
+      	  .call(xAxis);
+      
+        svg.append("text")
+      	  .attr("x", width/2)
+      	  .attr("y", height+40)
+      	  .attr("font-family", "Verdana")
+      	  .attr("font-size", "12px")
+      	  .attr("font-weight", "bold")
+      	  .text("Year");
+      
+        svg.append("g")
+      	  .attr("class", "yaxis")
+      	  .call(yAxis)
+      	  .append("text")
+      	  .attr("transform", "rotate(-90)")
+      	  .attr("y", 6)
+      	  .attr("dy", "0.71em")
+      	  .attr("fill", "#000")
+      	  .style("font-family", "Verdana")
+      	  .attr("font-size", "12px")
+      	  .attr("font-weight", "bold")
+      	  .text("Number of Skyscrapers");
+      
+        svg.append("text")
+      		.attr("transform", "translate(" + width/2 + "," + -70 + ")")
+      		.style("text-anchor", "middle")
+      		.attr("font-family", "Verdana")
+      		.attr("font-size", "20px")
+      		.text("Number of Skyscrapers by Year in the United States");
+      
+        var mapnew = svg.selectAll(".mapnew")
+      	.data(purposes)
+      	.enter().append("g")
+      	.attr("class", "mapnew");
+      
+        mapnew.append("path")
+      	  .attr("class", "line")
+      	  .attr("id", function(d){
+      		  return d.id.substring(0, 3).toUpperCase();
+      	  })
+      	  .attr("d", function(d) { return line(d.values); })
+      	  .style("stroke", function(d) { return colorMap[d.id]; });
+      
+        mapnew.append("text")
+      	  .datum(function(d) { return {id: d.id, value: d.values[d.values.length - 1]}; })
+      	  .attr("transform", function(d) { return "translate(" + x(d.value.year) + "," + y(d.value.count) + ")"; })
+      	  .attr("x", 3)
+      	  .attr("dy", "0.35em")
+      	  .attr("font-weight", "bold")
+      	  .attr("font-family", "Verdana")
+      	  .attr("font-size", "12px")
+      	  .text(function(d) { return d.id.substring(0,1).toUpperCase() + d.id.substring(1,d.id.length); })
+      	  .on("mouseover", function(d){
+      		var thisId = d.id.substring(0, 3).toUpperCase();
+      		if (Mapping[thisId].shown){
+      		  for (purpose in Mapping){
+      			if (purpose != thisId){
+      			  if (Mapping[purpose].shown){
+      				d3.select("path#" + purpose).style("stroke", "black").style("opacity", 0.6);
+      			  }
+      			}
+      		  } 
+      		}
+      	  })
+      	  .on("mouseout", function(d){
+      		for (purpose in Mapping){
+      		  if (Mapping[purpose] && Mapping[purpose].shown){
+      			d3.select("path#" + purpose).style("stroke", colorMap[Mapping[purpose].full]).style("opacity", 1);
+      		  }
+      		} 
+      	  })
+      	  .on("click", function(d){
+      		var id = d.id.substring(0, 3).toUpperCase();
+      		var newOpacity = 0;
+      		newOpacity = Mapping[id].shown ? 0: 1;
+      		Mapping[id].shown = !(Mapping[id].shown);
+      		d3.select("path#" + id).style("opacity", newOpacity);
+      	  });
+      
+      	var focusYear = svg.append("g")
+      	  .attr("class", "focus")
+      	  .style("display", "none");
+      
+      	focusYear.append("text")
+      		.attr("class", "date")
+      		.style("stroke", "white")
+      		.style("stroke-width", "3.5px")
+      		.style("opacity", 0.8)
+      		.attr("dx", 8)
+      		.attr("dy", "-.3em")
+      		.attr("font-family", "Verdana")
+      		.attr("font-weight", "bold")
+      		.attr("font-size", "12px");
+      	focusYear.append("text")
+      		.attr("class", "date")
+      		.attr("dx", 8)
+      		.attr("dy", "-.3em")
+      		.attr("font-family", "Verdana")
+      		.attr("font-weight", "bold")
+      		.attr("font-size", "12px");
+      
+      
+      	var focus = svg.append("g")
+      	  .attr("class", "focus")
+      	  .style("display", "none");
+      
+        focus.append("circle")
+      	  .attr("r", 6)
+      	  .attr("stroke-opacity", 0.5);
+      
+      	focus.append("text")
+      		.attr("class", "y3")
+      		.style("stroke", "white")
+      		.style("stroke-width", "3.5px")
+      		.style("opacity", 0.8)
+      		.attr("dx", 8)
+      		.attr("dy", "1em")
+      		.attr("font-weight", "bold")
+      		.attr("font-size", "10px");
+      	focus.append("text")
+      		.attr("class", "y4")
+      		.attr("dx", 8)
+      		.attr("dy", "1em")
+      		.attr("font-weight", "bold")
+      		.attr("font-size", "10px");
+      
+        var focus2 = svg.append("g")
+      	  .attr("class", "focus")
+      	  .style("display", "none");
+      
+        focus2.append("circle")
+      	  .attr("r", 6)
+      	  .attr("stroke-opacity", 0.5);
+      
+      	focus2.append("text")
+      		.attr("class", "y3")
+      		.style("stroke", "white")
+      		.style("stroke-width", "3.5px")
+      		.style("opacity", 0.8)
+      		.attr("dx", 8)
+      		.attr("dy", "1em")
+      		.attr("font-weight", "bold")
+      		.attr("font-size", "10px");
+      	focus2.append("text")
+      		.attr("class", "y4")
+      		.attr("dx", 8)
+      		.attr("dy", "1em")
+      		.attr("font-weight", "bold")
+      		.attr("font-size", "10px");
+      
+        var focus3 = svg.append("g")
+      	  .attr("class", "focus")
+      	  .style("display", "none");
+      
+        focus3.append("circle")
+      	  .attr("r", 6)
+      	  .attr("stroke-opacity", 0.5);
+      
+      	focus3.append("text")
+      		.attr("class", "y3")
+      		.style("stroke", "white")
+      		.style("stroke-width", "3.5px")
+      		.style("opacity", 0.8)
+      		.attr("dx", 8)
+      		.attr("dy", "1em")
+      		.attr("font-weight", "bold")
+      		.attr("font-size", "10px");
+      	focus3.append("text")
+      		.attr("class", "y4")
+      		.attr("dx", 8)
+      		.attr("dy", "1em")
+      		.attr("font-weight", "bold")
+      		.attr("font-size", "10px");
+      
+        var focus4 = svg.append("g")
+      	  .attr("class", "focus")
+      	  .style("display", "none");
+      
+        focus4.append("circle")
+      	  .attr("r", 6)
+      	  .attr("stroke-opacity", 0.5);
+      
+      	focus4.append("text")
+      		.attr("class", "y3")
+      		.style("stroke", "white")
+      		.style("stroke-width", "3.5px")
+      		.style("opacity", 0.8)
+      		.attr("dx", 8)
+      		.attr("dy", "1em")
+      		.attr("font-weight", "bold")
+      		.attr("font-size", "10px");
+      	focus4.append("text")
+      		.attr("class", "y4")
+      		.attr("dx", 8)
+      		.attr("dy", "1em")
+      		.attr("font-weight", "bold")
+      		.attr("font-size", "10px");
+      
+        var focus5 = svg.append("g")
+      	  .attr("class", "focus")
+      	  .style("display", "none");
+      
+        focus5.append("circle")
+      	  .attr("r", 6)
+      	  .attr("stroke-opacity", 0.5);
+      
+      	focus5.append("text")
+      		.attr("class", "y3")
+      		.style("stroke", "white")
+      		.style("stroke-width", "3.5px")
+      		.style("opacity", 0.8)
+      		.attr("dx", 8)
+      		.attr("dy", "1em")
+      		.attr("font-weight", "bold")
+      		.attr("font-size", "10px");
+      	focus5.append("text")
+      		.attr("class", "y4")
+      		.attr("dx", 8)
+      		.attr("dy", "1em")
+      		.attr("font-weight", "bold")
+      		.attr("font-size", "10px");
+      
+      	var focusLine = svg.append("g")
+      	  .attr("class", "focus")
+      	  .style("display", "none");
+      
+      	focusLine.append("line")
+      	  .attr("id", "vertLine")
+      	  .attr("x1", 0)
+      	  .attr("x2", 0)
+      	  .attr("y1", 0)
+      	  .attr("y2", height)
+      	  .style("stroke", "black")
+      	  .style("stroke-width", "1px")
+      	  .style("stroke-opacity", 0.25);
+         
+        var overlay = svg.append("rect")
+      	  .attr("class", "overlay")
+      	  .attr("width", width)
+      	  .attr("height", height)
+      	  .on("mouseover", function() {
+      
+      		if (Mapping['ALL'].shown){
+      		  focus.style("display", null);
+      		}
+      		if (Mapping['HOT'].shown){
+      		  focus2.style("display", null);
+      		}
+      		if (Mapping['OFF'].shown){
+      		  focus3.style("display", null);
+      		}
+      		if (Mapping['RES'].shown){
+      		  focus4.style("display", null);
+      		}
+      		if (Mapping['OTH'].shown){
+      		  focus5.style("display", null);
+      		}
+      		focusYear.style("display", null);
+      		focusLine.style("display", null); })
+      	  .on("mouseout", function() {
+      		focus.style("display", "none");
+      		focus2.style("display", "none");
+      		focus3.style("display", "none");
+      		focus4.style("display", "none"); 
+      		focus5.style("display", "none"); 
+      		focusYear.style("display", "none");
+      		focusLine.style("display", "none");  })
+      	  .on("mousemove", mousemove);
+                  
+        function mousemove() {
+      	var x0 = x.invert(d3.mouse(this)[0]),
+      		i = bisectDate(data, x0, 1),
+      		d0 = data[i - 1],
+      		d1 = data[i],
+      		d = x0 - d0.year > d1.year - x0 ? d1 : d0;
+      	focus.attr("transform", "translate(" + x(d.year) + "," + y(d.all) + ")");
+      	focus2.attr("transform", "translate(" + x(d.year) + "," + y(d.hotel) + ")");
+      	focus3.attr("transform", "translate(" + x(d.year) + "," + y(d.office) + ")");
+      	focus4.attr("transform", "translate(" + x(d.year) + "," + y(d.residential) + ")");
+      	focus5.attr("transform", "translate(" + x(d.year) + "," + y(d.other) + ")");
+      	focusYear.attr("transform", "translate(" + (x(d.year)-75) + ", 30)");
+      
+      	d3.select("#vertLine")
+      	  .attr("transform", "translate(" + x(d.year) + ", 0)");
+      
+      	focusYear.selectAll(".date")
+      	   .text("Year: " + d.year.getFullYear());
+      
+      	focus.select("text.y3")
+      		.text(d.all);
+      
+      	focus.select("text.y4")
+      		.text(d.all);
+      
+      	focus2.select("text.y3")
+      		.text(d.hotel);
+      
+      	focus2.select("text.y4")
+      		.text(d.hotel);
+      
+      	focus3.select("text.y3")
+      		.text(d.office);
+      
+      	focus3.select("text.y4")
+      		.text(d.office);
+      
+      	focus4.select("text.y3")
+      		.text(d.residential);
+      
+      	focus4.select("text.y4")
+      		.text(d.residential);
+      
+      	focus5.select("text.y3")
+      		.text(d.other);
+      
+      	focus5.select("text.y4")
+      		.text(d.other);
+      
+        }; 
+      
+        var bisectDate = d3.bisector(function(d) { return (d.year); }).left;    
+      
+      });
+      
+      function type(d, _, columns) {
+        d.year = parseTime(d.year);
+        for (var i = 1, n = columns.length, c; i < n; ++i) d[c = columns[i]] = +d[c];
+        return d;
+      }
+      
+   </script>
+</body>
