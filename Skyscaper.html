@@ -84,7 +84,7 @@
       
       var Mapping = {};
       
-      d3.csv("http://127.0.0.1:8080/skyscapers-count.csv", type, function(error, data) {
+      d3.csv("https://github.com/kaushik1984/Visualization_Kaushik/blob/master/skyscapers-count.csv", type, function(error, data) {
         if (error) throw error;
       
         var purposes = data.columns.slice(1).map(function(id) {
